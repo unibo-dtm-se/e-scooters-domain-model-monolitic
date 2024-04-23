@@ -90,6 +90,10 @@ class EScooter {
         return this.serviceState
     }
 
+    isAvailable(){
+        return this.serviceState == EScooter.IN_SERVICE_AVAILABLE; 
+    }
+
     unlock() {
         if (this.serviceState == EScooter.IN_SERVICE_AVAILABLE){
             this.serviceState = EScooter.IN_SERVICE_NOT_AVAILABLE_IN_USE;
@@ -146,6 +150,11 @@ class EScooters {
 
     isEScooterAlreadyRegistered(id){
         return this.scooters.get(id) != undefined
+    }
+
+    isEScooterAvailable(id){
+        return this.isEScooterAlreadyRegistered(id) &&
+                     this.scooters.get(id).isAvailable()
     }
 
     getAllEScootersId(){
@@ -253,30 +262,59 @@ class Rentings {
     log(msg){
         console.log("[Renting] " + msg);
     }
+}
 
+class EScootersServiceUseCases {
+
+    constructor(accounts, escooters, rentings){
+        this.accounts = accounts;
+        this.escooters = escooters;
+        this.rentings = rentings
+    }
+
+    rentAScooter(userId, escooterId){
+        if (!accounts.isUserAlreadyRegistered(userId)){
+            throw "User not registered!"
+        } else if (!escooters.isEScooterAvailable(escooterId)){
+            throw "EScooter not available";
+        } else {
+            let rentId = rentings.startNewRent(userId, escooterId);
+            return rentId;
+        }
+    }
+
+    terminateARent(userId, rentId){
+        let rent = rentings.getRentById(rentId);
+        if (rent == undefined){
+            throw "Unknown rent"
+        } else if (rent.userId != userId){
+            throw "User not allowed"
+        } else {
+            rent.endRenting()
+        }
+    }
 
 }
 
 let accounts = new UserAccounts()
 let escooters = new EScooters()
 let rentings = new Rentings()
+let service = new EScootersServiceUseCases(accounts, escooters, rentings);
 
-/** some interaction example  */
+/* exporting objects */
 
-let account = new UserAccount("amerini","Alda","Merini")
-console.log("account: " + account.fullName())
+exports.getAccounts = function () {
+	return accounts
+}
 
-accounts.registerNewUser("amerini", "Alda", "Merini");
-accounts.registerNewUser("emontale", "Eugenio", "Montale");
-accounts.registerNewUser("gungaretti", "Giuseppe", "Ungaretti");
+exports.getEScooters = function () {
+	return escooters
+}
 
-escooters.registerNewEScooter("escoo-01");
-escooters.registerNewEScooter("escoo-02");
+exports.getRentings = function () {
+	return rentings
+}
 
-let rentId = rentings.startNewRent("amerini","escoo-01");
-rentings.endOngoingRent(rentId);
-
-let events = rentings.getRentById(rentId).getEvents()
-events.forEach((ev) => {
-    console.log(ev)
-})
+exports.getService = function () {
+	return service
+}
